@@ -1,0 +1,20 @@
+{
+  "name": "bot_api",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "repository": "git@github.com:geosf/bot_api.git",
+  "author": "geosf <geovanisilvaf1602@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.1.0",
+    "puppeteer": "^22.2.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "type": "module"
+}
