@@ -13,7 +13,11 @@ export async function runBotCrefisa(
   const downloadPath = path.resolve("./downloads");
   fs.mkdirSync(downloadPath, { recursive: true });
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, // ou deixe em branco se local padrão
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
   const page = await browser.newPage();
 
   try {
