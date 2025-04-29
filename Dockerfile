@@ -1,18 +1,18 @@
-FROM node:18.16-slim
+# Use uma imagem base com Node.js
+FROM node:18-slim
 
-USER root
-RUN useradd -ms /bin/bash crawler
+# Defina o diretório de trabalho
+WORKDIR /app
 
-COPY package*.json /home/crawler/
+# Copie os arquivos do projeto
+COPY . .
 
-RUN apt-get update
-
-RUN apt-get install -y \
-    awscli \
+# Instale as dependências do sistema e o Chromium
+RUN apt-get update && apt-get install -y \
+    wget \
     ca-certificates \
     fonts-liberation \
-    gconf-service \
-    libappindicator1 \
+    libappindicator3-1 \
     libasound2 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
@@ -22,16 +22,13 @@ RUN apt-get install -y \
     libdbus-1-3 \
     libexpat1 \
     libfontconfig1 \
+    libgbm1 \
     libgcc1 \
-    libgconf-2-4 \
-    libgdk-pixbuf2.0-0 \
     libglib2.0-0 \
     libgtk-3-0 \
     libnspr4 \
     libnss3 \
     libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libstdc++6 \
     libx11-6 \
     libx11-xcb1 \
     libxcb1 \
@@ -46,23 +43,24 @@ RUN apt-get install -y \
     libxss1 \
     libxtst6 \
     lsb-release \
-    wget \
     xdg-utils \
-    zip
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN cd /home/crawler/ && yarn
+# Baixe e instale o Chromium
+RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    dpkg -i google-chrome-stable_current_amd64.deb || apt-get -fy install && \
+    rm google-chrome-stable_current_amd64.deb
 
-COPY ./app /home/crawler/app
-RUN mkdir -p /home/crawler/app/downloads
+# Instale as dependências do projeto
+RUN yarn
 
-COPY ./bin/crawl /home/crawler/
+COPY ./bin/crawl /home/crawl
+RUN chown -R crawler:crawler /home/
+RUN chmod +x /home/crawl
 
-RUN chown -R crawler:crawler /home/crawler/
+# Exponha a porta que a aplicação usará
+EXPOSE 3000
 
-RUN chmod -R a+rw /home/crawler/
-RUN chmod +x /home/crawler/crawl
-
-USER crawler
-WORKDIR /home/crawler
-
-ENTRYPOINT ["/home/crawler/crawl"]
+# Comando para iniciar a aplicação
+CMD ["/home/crawl"]

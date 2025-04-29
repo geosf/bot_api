@@ -14,6 +14,7 @@ export async function runBotCrefisa(
   fs.mkdirSync(downloadPath, { recursive: true });
 
   const browser = await puppeteer.launch({
+    executablePath: "/usr/bin/google-chrome",
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--start-maximized"],
   });
