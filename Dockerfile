@@ -53,14 +53,10 @@ RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd6
     rm google-chrome-stable_current_amd64.deb
 
 # Instale as dependências do projeto
-RUN yarn
-
-COPY ./bin/crawl /home/crawl
-RUN chown -R crawler:crawler /home/
-RUN chmod +x /home/crawl
+RUN npm install
 
 # Exponha a porta que a aplicação usará
 EXPOSE 3000
 
 # Comando para iniciar a aplicação
-CMD ["/home/crawl"]
+CMD ["node", "app/server.js"]
