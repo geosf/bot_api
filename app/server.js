@@ -1,5 +1,5 @@
 import express, { json } from "express";
-import botRoutes from "./routes/routes.js";
+import botRoutes from "./src/routes/routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;

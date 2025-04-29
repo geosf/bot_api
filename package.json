@@ -7,11 +7,11 @@
   "license": "MIT",
   "dependencies": {
     "express": "^5.1.0",
-    "puppeteer": "^22.2.0"
+    "puppeteer": "^24.7.2"
   },
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "start": "node app/server.js -D",
+    "dev": "nodemon app/server.js"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"

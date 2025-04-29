@@ -15,12 +15,13 @@ export async function runBotCrefisa(
 
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, // ou deixe em branco se local padrão
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--start-maximized"],
   });
   const page = await browser.newPage();
 
   try {
+    console.log("Acessando o site da Crefisa...");
+
     await page.goto(
       "https://sfc.sistemascr.com.br/autorizador/Login/AC.UI.LOGIN.aspx?FISession=f993a8108d9c"
     );
@@ -311,12 +312,15 @@ export async function runBotCrefisa(
       return data;
     });
 
-    return result;
-  } catch (error) {
-    console.error("Erro no bot:", error);
-  } finally {
     clearDownloadFolder(downloadPath);
     await browser.close();
+
+    return result;
+  } catch (error) {
+    clearDownloadFolder(downloadPath);
+    console.error("Erro no bot:", error);
+    await browser.close();
+    throw new Error(error.message);
   }
 }
 
