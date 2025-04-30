@@ -32,7 +32,7 @@ Roda o bot da Crefisa, que realiza login e download de arquivos associados a um 
 
 #### &#x20;📍 URL
 
-http\://localhost:3000/bot/crefisa
+````https://bot-api-wrjw.onrender.com/bot/crefisa````
 
 
 
