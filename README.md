@@ -22,7 +22,7 @@ src/\
 
 ├── index.js # Inicialização do servidor Express\
 \
-🔗 ##Endpoint
+## 🔗 Endpoint
 
 ### `POST /bot/crefisa`
 
@@ -32,7 +32,7 @@ Roda o bot da Crefisa, que realiza login e download de arquivos associados a um 
 
 #### &#x20;📍 URL
 
-http\://localhost:3000/bot/crefisa
+````https://bot-api-wrjw.onrender.com/bot/crefisa````
 
 
 
@@ -46,9 +46,11 @@ http\://localhost:3000/bot/crefisa
 
 ```
 {
-  "cpf": "39972402649",
-  "clientName": "Marvitor de Souza Lopes",
-  "benefitNumber": "2142053992"
+  "cpf": "111.111.111-11",
+  "clientName": "Fulano da Silva",
+  "benefitNumber": "11111111111",
+  "username": "Usuario para acessar o site",
+  "password": "Senha para acessar o site"
 }
 ```
 
