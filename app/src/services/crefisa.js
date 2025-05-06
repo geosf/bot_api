@@ -1,7 +1,6 @@
 import puppeteer from "puppeteer";
 import path from "path";
 import fs from "fs";
-import { setTimeout } from "timers/promises";
 
 export async function runBotCrefisa(
   username,
@@ -12,19 +11,25 @@ export async function runBotCrefisa(
 ) {
   const downloadPath = path.resolve("../downloads");
   fs.mkdirSync(downloadPath, { recursive: true });
+  const beforeFiles = fs.readdirSync(downloadPath);
 
   const browser = await puppeteer.launch({
     headless: "new",
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--start-maximized"],
   });
   const page = await browser.newPage();
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+  );
+  await page.setExtraHTTPHeaders({
+    "Accept-Language": "pt-BR,pt;q=0.9",
+    Referer: "https://google.com",
+  });
 
   try {
     console.log("Acessando o site da Crefisa...");
 
-    await page.goto(
-      "https://sfc.sistemascr.com.br/autorizador/Login/AC.UI.LOGIN.aspx?FISession=f993a8108d9c"
-    );
+    await page.goto("https://sfc.sistemascr.com.br/autorizador/Login/");
 
     const errorPage = await page.$("#ipAddress", { timeout: 5000 });
 
@@ -41,7 +46,14 @@ export async function runBotCrefisa(
       );
     }
 
-    await page.waitForSelector("#EUsuario_CAMPO", { timeout: 60000 });
+    try {
+      await page.waitForSelector("#EUsuario_CAMPO", { timeout: 60000 });
+    } catch (error) {
+      await page.screenshot({ path: "erro_timeout.png" });
+      const html = await page.content();
+      console.error("Erro ao buscar seletor. HTML:", html);
+      throw error;
+    }
 
     // Login
     await page.type("#EUsuario_CAMPO", username);
@@ -72,6 +84,8 @@ export async function runBotCrefisa(
       cpf
     );
 
+    console.log("Digitando o CPF do cliente...");
+
     await page.click(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_AbaTermoAutorizacao_txtNomeCli_CAMPO"
     );
@@ -82,6 +96,8 @@ export async function runBotCrefisa(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_AbaTermoAutorizacao_txtNomeCli_CAMPO"
     );
 
+    console.log("Digitando o nome do cliente...");
+
     await page.type(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_AbaTermoAutorizacao_txtNomeCli_CAMPO",
       clientName
@@ -91,6 +107,8 @@ export async function runBotCrefisa(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_AbaTermoAutorizacao_txtLocalAssTermo_CAMPO",
       "SAO PAULO"
     );
+
+    console.log("Digitando o local de assinatura...");
 
     // (Opcional) Representante legal
     // await page.click('#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_AbaTermoAutorizacao_ckbReprLegal');
@@ -103,36 +121,93 @@ export async function runBotCrefisa(
       downloadPath,
     });
 
-    // Espera o botão aparecer e ficar clicável
-    await page.waitForSelector("#btnImprimirTermo_txt", {
-      visible: true,
-      timeout: 10000,
-    });
+    console.log("Aguardando o botão de imprimir aparecer...");
 
-    // Garante que o botão não está desabilitado
-    await page.waitForFunction(
-      () => {
-        const btn = document.querySelector("#btnImprimirTermo_txt");
-        return btn && !btn.disabled;
-      },
-      { timeout: 10000 }
-    );
+    // Espera o botão aparecer e ficar clicável
+    try {
+      await page.waitForSelector("#btnImprimirTermo_txt", {
+        visible: true,
+        timeout: 30000,
+      });
+    } catch (error) {
+      await page.screenshot({ path: "erro_timeout.png" });
+      console.error("Erro ao esperar o botão de imprimir:", error);
+      await browser.close();
+      throw new Error("Erro ao esperar o botão de imprimir.");
+    }
+
+    try {
+      await page.waitForFunction(
+        () => {
+          const btn = document.querySelector("#btnImprimirTermo_txt");
+          return btn && !btn.disabled;
+        },
+        { timeout: 30000 }
+      );
+    } catch (error) {
+      await page.screenshot({ path: "erro_timeout.png" });
+      console.error("Erro ao esperar o botão de imprimir:", error);
+      await browser.close();
+      throw new Error("Erro ao esperar o botão de imprimir.");
+    }
 
     // Clica no botão
     await page.click("#btnImprimirTermo_txt");
 
-    await page.waitForFunction(
-      () => {
-        const el = document.querySelector("#ctl00_UpdPrs");
-        return el && window.getComputedStyle(el).display === "none";
-      },
-      { timeout: 10000 }
-    ); // timeout opcional de 10 segundos
+    console.log("Botão de imprimir clicado!");
+
+    try {
+      await page.waitForFunction(
+        () => {
+          const el = document.querySelector("#ctl00_UpdPrs");
+          return !el || window.getComputedStyle(el).display === "none";
+        },
+        { timeout: 30000 }
+      );
+    } catch (error) {
+      await page.screenshot({ path: "erro_timeout.png" });
+      console.error("Erro ao esperar o elemento desaparecer:", error);
+      await browser.close();
+      throw new Error(
+        "Erro ao esperar o elemento de carregamento desaparecer."
+      );
+    }
+
+    let downloadedFile;
+    for (let i = 0; i < 30; i++) {
+      await new Promise((res) => setTimeout(res, 1000)); // espera 1s
+
+      const afterFiles = fs.readdirSync(downloadPath);
+      const newFiles = afterFiles.filter((f) => !beforeFiles.includes(f));
+
+      if (
+        newFiles.length > 0 &&
+        !newFiles.some((f) => f.endsWith(".crdownload"))
+      ) {
+        downloadedFile = newFiles[0];
+        break;
+      }
+    }
+
+    if (downloadedFile) {
+      console.log("Download detectado:", downloadedFile);
+    } else {
+      console.log("Nenhum arquivo novo detectado na pasta de downloads.");
+      await page.screenshot({ path: "erro_timeout.png" });
+      throw new Error(
+        "Timeout: Nenhum arquivo novo foi detectado na pasta de downloads."
+      );
+    }
+
+    console.log("Download do termo de autorização concluído!");
 
     await page.waitForSelector(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_ConsultaDadosBeneficio_tab",
       { timeout: 30000 }
     );
+
+    console.log("Aba de consulta de dados do benefício encontrada!");
+    console.log("Acessando a aba de consulta de dados do benefício...");
 
     // Selecionar nova aba: SOLICITAÇÃO DE AUTORIZAÇÃO PARA CONSULTA
     await page.click(
@@ -148,15 +223,28 @@ export async function runBotCrefisa(
       cpf
     );
 
+    console.log("Digitando o CPF do cliente na aba de consulta...");
+
     // Selecionar primeira chave
 
-    await page.waitForSelector(
-      "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_ConsultaDadosBeneficio_cboChaveTermo_CAMPO > option"
-    );
+    try {
+      await page.waitForSelector(
+        "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_ConsultaDadosBeneficio_cboChaveTermo_CAMPO > option"
+      );
+    } catch (error) {
+      await page.screenshot({ path: "erro_timeout.png" });
+      console.error("Erro ao esperar a opção de chave:", error);
+      await browser.close();
+      throw new Error("Erro ao esperar a opção de chave.");
+    }
+
+    console.log("Aguardando as opções de chave aparecerem...");
 
     const options = await page.$$(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_ConsultaDadosBeneficio_cboChaveTermo_CAMPO > option"
     );
+
+    console.log("Opções de chave encontradas!");
 
     const optionValue = await page.evaluate(
       (option) => option.value,
@@ -171,7 +259,7 @@ export async function runBotCrefisa(
       return select && select.options.length > 1;
     });
 
-    await setTimeout(2000);
+    await sleep(1000);
 
     await page.select(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_ConsultaDadosBeneficio_cboChaveTermo_CAMPO",
@@ -189,6 +277,8 @@ export async function runBotCrefisa(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_ConsultaDadosBeneficio_cboDocIdentifCli_CAMPO",
       "6"
     );
+
+    console.log("Tipo de documento selecionado!");
 
     // Anexar arquivo (duas vezes)
     const filePath = path.join(
@@ -259,7 +349,7 @@ export async function runBotCrefisa(
       return select && select.options.length > 1;
     });
 
-    await setTimeout(2000);
+    await sleep(1000);
 
     await page.select(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_ddlNomeCli_CAMPO",
@@ -342,7 +432,8 @@ export async function runBotCrefisa(
  * Aguarda alguns segundos por segurança, caso o alerta demore a surgir.
  * @param {import('puppeteer').Page} page - Página do Puppeteer
  */
-async function setupDialogAutoConfirm(page, timeoutMs = 5000) {
+async function setupDialogAutoConfirm(page) {
+  const timeoutMs = 3000;
   return new Promise((resolve) => {
     let resolved = false;
 
@@ -375,4 +466,8 @@ function clearDownloadFolder(folderPath) {
   } catch (err) {
     console.error("Erro ao limpar a pasta:", err);
   }
+}
+
+async function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
