@@ -10,12 +10,11 @@ export async function runBotCrefisa(
   benefitNumber,
   clientName
 ) {
-  const downloadPath = path.resolve("./downloads");
+  const downloadPath = path.resolve("../downloads");
   fs.mkdirSync(downloadPath, { recursive: true });
 
   const browser = await puppeteer.launch({
-    executablePath: "/usr/bin/google-chrome",
-    headless: true,
+    headless: "new",
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--start-maximized"],
   });
   const page = await browser.newPage();
@@ -26,6 +25,21 @@ export async function runBotCrefisa(
     await page.goto(
       "https://sfc.sistemascr.com.br/autorizador/Login/AC.UI.LOGIN.aspx?FISession=f993a8108d9c"
     );
+
+    const errorPage = await page.$("#ipAddress", { timeout: 5000 });
+
+    if (errorPage) {
+      const h1 = await page.$("body > section > div > center > h1");
+      const text = await page.evaluate((el) => el.textContent, h1);
+
+      console.log(`ip: ${text}`);
+
+      console.log("Erro ao acessar o site da Crefisa. Verifique sua conexão.");
+      await browser.close();
+      throw new Error(
+        "O portal está indisponível no momento, pois o horário de funcionamento é das 08h00 às 21h00."
+      );
+    }
 
     await page.waitForSelector("#EUsuario_CAMPO", { timeout: 60000 });
 
@@ -55,8 +69,7 @@ export async function runBotCrefisa(
 
     await page.type(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_AbaTermoAutorizacao_txtCpfCli_CAMPO",
-      cpf,
-      { delay: 150 }
+      cpf
     );
 
     await page.click(
@@ -71,8 +84,7 @@ export async function runBotCrefisa(
 
     await page.type(
       "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_AbaTermoAutorizacao_txtNomeCli_CAMPO",
-      clientName,
-      { delay: 150 }
+      clientName
     );
 
     await page.type(
