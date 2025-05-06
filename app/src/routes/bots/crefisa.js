@@ -24,7 +24,7 @@ router.post("/", async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error("Erro no bot Crefisa:", error);
-    res.status(500).json({ error: "Erro ao rodar o bot Crefisa" });
+    res.status(500).json({ error: error.message });
   }
 });
 
