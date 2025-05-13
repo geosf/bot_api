@@ -1,26 +1,25 @@
 import { Router } from "express";
-import { runBotCrefisa } from "../../services/crefisa.js"; // Importa a função do bot Crefisa
+import { enqueueBotJob } from "../../services/queueManager.js";
 
 const router = Router();
 
 router.post("/", async (req, res) => {
+  const initialMemory = process.memoryUsage().heapUsed;
   try {
-    const { username, password, cpf, clientName, benefitNumber } = req.body;
+    const { cpf, clientName, benefitNumber } = req.body;
 
-    if (!username || !password || !cpf || !clientName || !benefitNumber) {
+    if (!cpf || !clientName || !benefitNumber) {
       return res
         .status(400)
         .json({ error: "Todos os campos são obrigatórios." });
     }
 
-    const result = await runBotCrefisa(
-      username,
-      password,
-      cpf,
-      benefitNumber,
-      clientName
-    );
+    const result = await enqueueBotJob(cpf, benefitNumber, clientName);
 
+    const finalMemory = process.memoryUsage().heapUsed;
+    const memoryConsumed = finalMemory - initialMemory;
+
+    console.log(`Memória consumida: ${memoryConsumed}`);
     res.json(result);
   } catch (error) {
     console.error("Erro no bot Crefisa:", error);
