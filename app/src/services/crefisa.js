@@ -49,9 +49,7 @@ export async function runBotCrefisa(
     try {
       await page.waitForSelector("#EUsuario_CAMPO", { timeout: 60000 });
     } catch (error) {
-      await page.screenshot({ path: "erro_timeout.png" });
-      const html = await page.content();
-      console.error("Erro ao buscar seletor. HTML:", html);
+      console.error("Erro ao esperar o campo de usuário:", error);
       throw error;
     }
 
@@ -130,7 +128,6 @@ export async function runBotCrefisa(
         timeout: 30000,
       });
     } catch (error) {
-      await page.screenshot({ path: "erro_timeout.png" });
       console.error("Erro ao esperar o botão de imprimir:", error);
       await browser.close();
       throw new Error("Erro ao esperar o botão de imprimir.");
@@ -145,7 +142,6 @@ export async function runBotCrefisa(
         { timeout: 30000 }
       );
     } catch (error) {
-      await page.screenshot({ path: "erro_timeout.png" });
       console.error("Erro ao esperar o botão de imprimir:", error);
       await browser.close();
       throw new Error("Erro ao esperar o botão de imprimir.");
@@ -165,7 +161,6 @@ export async function runBotCrefisa(
         { timeout: 30000 }
       );
     } catch (error) {
-      await page.screenshot({ path: "erro_timeout.png" });
       console.error("Erro ao esperar o elemento desaparecer:", error);
       await browser.close();
       throw new Error(
@@ -193,7 +188,6 @@ export async function runBotCrefisa(
       console.log("Download detectado:", downloadedFile);
     } else {
       console.log("Nenhum arquivo novo detectado na pasta de downloads.");
-      await page.screenshot({ path: "erro_timeout.png" });
       throw new Error(
         "Timeout: Nenhum arquivo novo foi detectado na pasta de downloads."
       );
@@ -232,7 +226,6 @@ export async function runBotCrefisa(
         "#ctl00_Cph_jp1_pnlDadosBeneficiario_Container_ConsultaDadosBeneficio_cboChaveTermo_CAMPO > option"
       );
     } catch (error) {
-      await page.screenshot({ path: "erro_timeout.png" });
       console.error("Erro ao esperar a opção de chave:", error);
       await browser.close();
       throw new Error("Erro ao esperar a opção de chave.");
@@ -433,27 +426,39 @@ export async function runBotCrefisa(
  * @param {import('puppeteer').Page} page - Página do Puppeteer
  */
 async function setupDialogAutoConfirm(page) {
-  const timeoutMs = 3000;
-  return new Promise((resolve) => {
-    let resolved = false;
+  try {
+    const timeoutMs = 3000;
+    return new Promise((resolve) => {
+      let resolved = false;
 
-    const handleDialog = async (dialog) => {
-      console.log(`Alerta detectado: "${dialog.message()}"`);
-      await dialog.accept();
-      resolved = true;
-      resolve(true); // Alert detected and accepted
-    };
+      const handleDialog = async (dialog) => {
+        try {
+          if (resolved) return; // Garante que o diálogo não será tratado mais de uma vez
 
-    page.once("dialog", handleDialog);
+          console.log(`Alerta detectado: "${dialog.message()}"`);
+          await dialog.accept();
+          resolved = true;
+          page.off("dialog", handleDialog); // Remove o ouvinte corretamente após aceitar o alerta
+          resolve(true); // Alerta detectado e aceito
+        } catch (error) {
+          console.log("Erro ao lidar com o diálogo:", error.message);
+          resolved = true;
+        }
+      };
 
-    // Timeout: se nenhum dialog aparecer, resolver após o tempo
-    setTimeout(() => {
-      if (!resolved) {
-        page.removeListener("dialog", handleDialog);
-        resolve(false); // Nenhum alert detectado
-      }
-    }, timeoutMs);
-  });
+      page.once("dialog", handleDialog);
+
+      // Timeout: se nenhum dialog aparecer, resolver após o tempo
+      setTimeout(() => {
+        if (!resolved) {
+          page.off("dialog", handleDialog); // Remove o ouvinte caso o timeout aconteça
+          resolve(false); // Nenhum alert detectado
+        }
+      }, timeoutMs);
+    });
+  } catch (error) {
+    console.error("Erro ao configurar o diálogo!");
+  }
 }
 
 function clearDownloadFolder(folderPath) {
